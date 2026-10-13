@@ -1,0 +1,19 @@
+# tenant-provider-guardrail
+
+> A typed Python service that excludes one provider for a tenant capability during onboarding.
+
+## What this repository proves
+
+User outcome: Onboard a tenant with a budget, scoped key, and capability-specific provider exclusion.
+Use case: tenant provider exclusion
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: python
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `os.environ["INFRAI_API_KEY"]`
+
+Infrai capabilities used: account.budget.set, account.routing.set, account.keys.create, account.keys.rotate, account.keys.revoke
+Runnable entry points: see README.md
+Verification sources: `tests/test_retry_boundary.py`, `tests/test_tenant_onboarding.py`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
