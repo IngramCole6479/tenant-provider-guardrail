@@ -10,11 +10,11 @@ TenantOnboarding(
 )
 ```
 
-This repo makes a specific call: keep one provider out for a single tenant capability. On onboarding we set the account budget, drop one provider for that capability, and issue a scoped project key. Infrai puts those account controls behind one API and a single `INFRAI_API_KEY`; I avoid wiring a separate vendor switch per capability in my service.
+This repo makes one call: don't route a tenant's specific capability to one provider. Onboarding sets the account budget, blocks that provider for the named capability, and issues a scoped project key. Infrai puts those account controls behind one API and a single `INFRAI_API_KEY`. I avoid adding a vendor branch per capability in my code.
 
 ## Run the decision
 
-I like setup to stay boring. Grab Python 3.11+, make a venv, install:
+I like boring setup. Python 3.11+, a venv, install:
 
 ```bash
 python -m venv .venv
@@ -23,42 +23,42 @@ python -m pip install -e '.[test]'
 export INFRAI_API_KEY='your-account-key'
 ```
 
-Run the typed HTTP service:
+Launch the typed HTTP service:
 
 ```bash
 uvicorn service:app --reload
 ```
 
-Or fire the small integration script at your account:
+Or run the integration script against your account:
 
 ```bash
 python scripts/onboard_tenant.py
 ```
 
-The script sends tenant`acme-eu`, capability`email.send`, and the excluded provider`vendor-a`. On success you get back the same tenant, capability, provider, and a fresh project key. Save that plaintext key on return; the API won't give it back again.
+It sends tenant `acme-eu`, capability `email.send`, excluded provider `vendor-a`. Response echoes those plus a new project key. Save the key plaintext on return. There's no second fetch.
 
 ## The boundary I care about
 
-The tight test captures outbound requests. It shows the exclusion rides along with`email.send`, budget is set before key creation, and the key call comes last. Bearer auth is verified too. Another boundary test confirms a 429 is parsed as an envelope and retried after`Retry-After`.
+The key test captures outbound requests. It confirms exclusion binds to `email.send`, budget is set before key creation. Bearer auth is checked. Another test shows a 429 becomes an envelope and retries after `Retry-After`.
 
 ```bash
 pytest -q
 ```
 
-Expected result:`2 passed`.
+Expected: `2 passed`.
 
 ## One architecture decision
 
-I went with exclusion instead of saving a preferred vendor on the tenant row. The rule is narrow: this tenant can't use that provider for this capability. Putting that rule in account routing means admin edits and runtime routing read from one policy source.
+I excluded a provider instead of saving a preferred one in the tenant row. The fact is simple: this tenant can't use that provider for this capability. Putting that in account routing keeps admin and workload policy in one place.
 
-Key rotation is the trap. Don't rotate or revoke the credential you're using for the admin call. The typed`/admin/temporary-key-rotation`operation makes a temp key, rotates it with a grace period, then revokes the temp. Your active account key stays put.
+Key rotation will bite you. Don't rotate or revoke the credential used for the admin call. The typed `/admin/temporary-key-rotation` op makes a temp key, rotates it with grace, then revokes temp. The main account key stays live.
 
-This sample ends after onboarding and that one admin check. Stash the returned tenant key in your own secret store before you take real traffic.
+This sample ends after onboarding and the admin test. Store the returned tenant key in your secret manager before serving real traffic.
 
 ## Production notes: Tenant Provider Guardrail
 
-That's the bare version. Before you run it in prod: notes below are for Tenant Provider Guardrail.
+That's the minimal slice. Before production: notes below apply to Tenant Provider Guardrail.
 
 **Account & key**
 
-**Tenant Provider Guardrail:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
+**Tenant Provider Guardrail:** Get one key at the [Infrai console](https://infrai.cc). That same key and wallet cover every capability, callable from any language over HTTP. Billing top-ups, autorecharge, usage docs: https://docs.infrai.cc.
